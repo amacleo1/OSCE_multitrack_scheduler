@@ -1,0 +1,30 @@
+<!DOCTYPE html><html><head><meta charset='utf-8'><title>NAMP OSCE Multi-Track Platinum Layout Fix</title>
+<style>
+body{font-family:Arial;margin:20px;background:#f5f6f8}.card{background:#fff;padding:16px;border-radius:10px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.settings{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+input,textarea{width:100%;padding:8px;box-sizing:border-box}textarea{height:220px}
+.btnrow{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+button{padding:10px 14px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:6px;text-align:center}.break{background:#fff3cd;font-weight:bold}.lunch{background:#dbeafe;font-weight:bold}
+</style></head><body>
+<h1 style="background:#0B4F3A;color:#D4AF37;padding:20px;border-radius:10px;text-align:center;margin-bottom:20px;">NAMP OSCE Grid Multi-Track Scheduler</h1>
+<div class='card'><div class='grid'><div><h3>Original Student List</h3><div class='btnrow'><label style='display:flex;align-items:center;gap:8px;'><input id='randomize' type='checkbox' style='width:auto'>Randomize Student Order</label><button onclick='resetStudents()'>Reset Students</button></div><textarea id='names'></textarea></div><div><h3>Roster Used for Scheduling</h3><div class='btnrow'><button onclick='copyRoster()'>Copy Roster</button></div><textarea id='rosterOut' readonly></textarea></div></div></div>
+<div class='card'><div class='settings'>
+<div><label>Stations Per Track</label><input id='stations' type='number' value='3'></div><div><label>Tracks</label><input id='tracks' type='number' value='3'></div><div><label>Reading Time</label><input id='reading' type='number' value='1'></div><div><label>Accommodation Reading (Final Circuit)</label><input id='accom' type='number' value='0'></div><div><label>Station Time</label><input id='stationTime' type='number' value='7'></div><div><label>Group Switch</label><input id='groupSwitch' type='number' value='15'></div><div><label>Coffee/Lunch After Circuit #</label><input id='lunchAfter' type='number' value='0'></div><div><label>Coffee/Lunch Length</label><input id='lunchLength' type='number' value='0'></div><div><label>Start Time</label><input id='startTime' type='time' value='09:00'></div>
+</div><br><button onclick='build()'>Generate Schedule</button><button onclick='resetSchedule()'>Reset Schedule</button></div>
+<div class='card' id='summary'></div><div class='card' id='schedule'></div>
+<script>
+function sf(m){let h=Math.floor(m/60)%24,mm=m%60;h=h%12||12;return h+':'+String(mm).padStart(2,'0');}
+function rng(seed){let s=seed;return ()=>((s=(s*1664525+1013904223)>>>0)/4294967296);}
+function shuffle(arr){let a=[...arr],r=rng(20250923);for(let i=a.length-1;i>0;i--){let j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function build(){let roster=names.value.split('\n').map(v=>v.trim()).filter(Boolean);if(randomize.checked)roster=shuffle(roster);rosterOut.value=roster.join('\n');let stations=+stationsEl.value||1,tracksN=+tracksEl.value||1,reading=+readingEl.value||0,accom=+accomEl.value||0,stationTime=+stationTimeEl.value||0,groupSwitch=+groupSwitchEl.value||0,lunchAfter=+lunchAfterEl.value||0,lunchLength=+lunchLengthEl.value||0;let p=startTimeEl.value.split(':');let current=(+p[0])*60+(+p[1]);let capacity=stations*tracksN,circuits=Math.max(1,Math.ceil(roster.length/capacity));summary.innerHTML='<b>Students:</b> '+roster.length+' | <b>Capacity:</b> '+capacity+' | <b>Circuits:</b> '+circuits;
+let html='<table><tr><th>Circuit</th><th>Time</th>';
+const trackColors=['#DBEAFE','#DCFCE7','#F3E8FF','#FCE7F3','#FEF3C7','#E0F2FE','#FEE2E2','#E2E8F0','#CCFBF1','#EDE9FE'];
+for(let t=0;t<tracksN;t++){const color=trackColors[t%trackColors.length];for(let s=1;s<=stations;s++){html+='<th style="background:'+color+';font-weight:bold;">'+String.fromCharCode(65+t)+s+'</th>';}}
+html+='</tr>';
+for(let c=1;c<=circuits;c++){let read=(c===circuits&&accom>0)?accom:reading;let base=(c-1)*capacity;for(let step=0;step<stations;step++){let ss=current+read,se=ss+stationTime;html+='<tr><td>'+c+'</td><td>'+sf(ss)+'-'+sf(se)+'</td>';for(let tr=0;tr<tracksN;tr++)for(let rm=0;rm<stations;rm++){let idx=base+(tr*stations)+((rm-step+stations)%stations);html+='<td>'+(roster[idx]||'Empty')+'</td>';}html+='</tr>';current=se;}if(c<circuits){if(lunchAfter===c&&lunchLength>0){html+='<tr class="lunch"><td>CB</td><td>'+sf(current)+'-'+sf(current+lunchLength)+'</td><td colspan="'+(tracksN*stations)+'">Coffee/Lunch Break ('+lunchLength+' min)</td></tr>';current+=lunchLength;}else if(groupSwitch>0){html+='<tr class="break"><td>GS</td><td>'+sf(current)+'-'+sf(current+groupSwitch)+'</td><td colspan="'+(tracksN*stations)+'">Group Switch ('+groupSwitch+' min)</td></tr>';current+=groupSwitch;}}}
+schedule.innerHTML=html+'</table>'}
+function copyRoster(){rosterOut.select();document.execCommand('copy');}
+function resetStudents(){names.value='';rosterOut.value='';randomize.checked=false;}
+function resetSchedule(){stationsEl.value=3;tracksEl.value=3;readingEl.value=1;accomEl.value=0;stationTimeEl.value=7;groupSwitchEl.value=15;lunchAfterEl.value=0;lunchLengthEl.value=0;startTimeEl.value='09:00';summary.innerHTML='';schedule.innerHTML='';}
+const names=document.getElementById('names'),rosterOut=document.getElementById('rosterOut'),randomize=document.getElementById('randomize');const stationsEl=document.getElementById('stations'),tracksEl=document.getElementById('tracks'),readingEl=document.getElementById('reading'),accomEl=document.getElementById('accom'),stationTimeEl=document.getElementById('stationTime'),groupSwitchEl=document.getElementById('groupSwitch'),lunchAfterEl=document.getElementById('lunchAfter'),lunchLengthEl=document.getElementById('lunchLength'),startTimeEl=document.getElementById('startTime');build();
+</script></body></html>
